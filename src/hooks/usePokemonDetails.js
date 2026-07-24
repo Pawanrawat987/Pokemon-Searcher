@@ -2,37 +2,47 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 
 function usePokemonDetails(id, pokemonName) {
-    const [pokemon, setPokemon] = useState({});
+    const [state, setState] = useState({ pokemon: null, isLoading: true, hasError: false });
+
     async function downloadPokemon() {
+        setState({ pokemon: null, isLoading: true, hasError: false });
         try {
-            let response;
-            if(pokemonName) {
-                response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonName}`);
-            } else {
-                response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${id}`);
-            }
-            const pokemonOfSameTypes = await axios.get(`https://pokeapi.co/api/v2/type/${response.data.types ? response.data.types[0].type.name : ''}`);
-            setPokemon({
-                name: response.data.name,
-                image: response.data.sprites.other.dream_world.front_default,
-                weight: response.data.weight,
-                height: response.data.height,
-                types: response.data.types.map((t) => t.type.name),
-                similarPokemons: pokemonOfSameTypes.data.pokemon
+            const identifier = pokemonName || id;
+            const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${identifier}`);
+            const data = response.data;
+
+            const primaryType = data.types?.[0]?.type?.name || '';
+            const sameTypePokemons = primaryType
+                ? await axios.get(`https://pokeapi.co/api/v2/type/${primaryType}`)
+                : null;
+
+            setState({
+                isLoading: false,
+                hasError: false,
+                pokemon: {
+                    name: data.name,
+                    image: data.sprites?.other?.dream_world?.front_default || data.sprites?.front_default,
+                    // PokeAPI sends height in decimetres and weight in hectograms,
+                    // convert to metres / kilograms so the numbers actually make sense
+                    height: (data.height / 10).toFixed(1),
+                    weight: (data.weight / 10).toFixed(1),
+                    types: data.types.map((t) => t.type.name),
+                    similarPokemons: sameTypePokemons
+                        ? sameTypePokemons.data.pokemon.filter((p) => p.pokemon.name !== data.name)
+                        : [],
+                },
             });
-            setPokemonListState({...pokemonListState, type: response.data.types ? response.data.types[0].type.name : '' })
-        } catch(error) {
-            console.log('something went')
+        } catch (error) {
+            setState({ pokemon: null, isLoading: false, hasError: true });
         }
-        
-    } 
-    const [pokemonListState, setPokemonListState] = useState({});
+    }
 
     useEffect(() => {
         downloadPokemon();
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id, pokemonName]);
 
-    return [pokemon];
+    return [state.pokemon, state.isLoading, state.hasError];
 }
 
 export default usePokemonDetails;
