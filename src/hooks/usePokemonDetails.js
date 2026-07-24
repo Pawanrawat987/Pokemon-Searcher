@@ -8,12 +8,12 @@ function usePokemonDetails(id, pokemonName) {
         setState({ pokemon: null, isLoading: true, hasError: false });
         try {
             const identifier = pokemonName || id;
-            const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${identifier}`);
+            const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/pokemon/${identifier}`);
             const data = response.data;
 
             const primaryType = data.types?.[0]?.type?.name || '';
             const sameTypePokemons = primaryType
-                ? await axios.get(`https://pokeapi.co/api/v2/type/${primaryType}`)
+                ? await axios.get(`${import.meta.env.VITE_API_BASE_URL}/type/${primaryType}`)
                 : null;
 
             setState({
